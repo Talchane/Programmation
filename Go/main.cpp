@@ -4,13 +4,20 @@
 using namespace std;
 using namespace sf;
 
+#define posInit Vector2f(60, 60)
 #define radCircles 22
 
 class Plateau :public Drawable
 {
 public:
-	Plateau(const Vector2i& dims) : tour('N'), blancasComidas(0), negrasComidas(0), posInit(60, 60), ghostCircle(radCircles)
+	Plateau(const Vector2i& dims) : tour('N'), blancasComidas(0), negrasComidas(0), ghostCircle(radCircles)
 	{
+		font.loadFromFile("arial.ttf");
+		scoreTexts.setFont(font);
+		scoreTexts.setString("Noir :\t0 \nBlanc :\t0");
+		scoreTexts.setOutlineThickness(1);
+		scoreTexts.setOutlineColor(Color(0, 0, 0));
+
 		for (int i = 0; i < dims.x; ++i)
 		{
 			grilleVerticale.emplace_back(Vector2f(3, (radCircles + 2) * 2 * (dims.y-1)));
@@ -112,24 +119,25 @@ public:
         ghostCircle.setPosition(posInit + Vector2f(pos.x * (radCircles + 2) * 2, pos.y * (radCircles + 2) * 2));
     }
 
+	vector<vector<char>> terrainAvant;
 	vector<vector<char>> terrain;
 	char tour;
 
 	int blancasComidas;
 	int negrasComidas;
 
-private:
 	vector<vector<CircleShape>>	cercles;
 	vector<RectangleShape> grilleVerticale;
 	vector<RectangleShape> grilleHorizontale;
 
-	vector<vector<char>> terrainAvant;
-	Vector2i coupPrecedent;
 
 	CircleShape ghostCircle;
-	Vector2f posInit;
 
 	#include "actu.hpp"
+
+private:
+	Font font;
+	Text scoreTexts;
 
 	virtual void draw(RenderTarget &target, RenderStates states) const
 	{
@@ -147,8 +155,11 @@ private:
 				target.draw(cercles[i][j]);
 			}
 		}
+		target.draw(scoreTexts);
 	}
 };
+
+#include "fonctionsSam.hpp"
 
 int main()
 {
@@ -161,7 +172,7 @@ int main()
 	{
 		while (window.pollEvent(event))
 		{
-			Vector2i pos((Mouse::getPosition(window) - (Vector2i)Vector2f(60, 60)) / ((radCircles + 2) * 2));
+			Vector2i pos((Mouse::getPosition(window) - (Vector2i)posInit) / ((radCircles + 2) * 2));
 			
 			if (event.type == Event::Closed)
 				window.close();
@@ -175,6 +186,27 @@ int main()
 				if (event.mouseButton.button == Mouse::Left)
 				{
 					goban.jouer(pos);
+				}
+			}
+			if (event.type == Event::KeyPressed)
+			{
+				if (event.key.code == Keyboard::Space)
+				{
+					map<char, int> scores;
+					scores['B'] = 10;
+					scores['N'] = 15;
+
+					auto res = getNewState(goban.terrain, scores, pos, 'B');
+					for (int i = 0; i < size(res.first); ++i)
+					{
+						for (int j = 0; j < size(res.first); ++j)
+						{
+							cout << res.first[i][j] << " ";
+						}
+						cout << endl;
+					}
+					cout << endl << "N = " << res.second['N'] << endl;
+					cout << "B = " << res.second['B'] << endl;
 				}
 			}
 		}

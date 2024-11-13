@@ -3,46 +3,87 @@
 
 void actu(Vector2i posAct)
 {
+	bool ko(false);
+	Vector2i posKo;
+	int nbCaptures(0);
+
+	// Suppression ancien ko
+	for (int i = 0; i < terrain.size(); ++i)
+	{
+		for (int j = 0; j < terrain[i].size(); ++j)
+		{
+			if (terrain[i][j] == 'K')
+			{
+				terrain[i][j] = 'X';
+				cercles[i][j].setOutlineColor(Color::Transparent);
+			}
+		}
+	}
+
+	// Check les captures de pierres
+	for (int i = 0; i < terrain.size(); ++i)
+		for (int j = 0; j < terrain[i].size(); ++j)
+			if (terrain[i][j] == tour && isCaptured(i, j))
+ 				nbCaptures++;
+
+	for (int i = 0; i < terrain.size(); ++i)
+	{
+		for (int j = 0; j < terrain[i].size(); ++j)
+		{
+			if (terrain[i][j] == tour && isCaptured(i, j))
+			{
+				vector<vector<bool>> visited(terrain.size(), vector<bool>(terrain[0].size(), false));
+				removeStones(i, j, terrain[i][j], visited);
+				posKo = Vector2i(i, j);
+			}
+		}
+	}
+	scoreTexts.setString("Noir :\t" + to_string(blancasComidas) + "\nBlanc :\t" + to_string(negrasComidas));
+
+
+
+
+	ko = nbCaptures == 1;	// Ko potentiellement possible ?
+	
+	if (!ko) 	// Ko impossible
+	{
+		cout << "Ko impossible" << endl;
+		terrainAvant = terrain;
+		return;
+	}
+
+	vector<vector<char>> bkpTerrain(terrain);
+	terrain[posKo.x][posKo.y] = tour;
+
 	// Check les captures de pierres
 	for (int i = 0; i < terrain.size(); ++i)
 	{
 		for (int j = 0; j < terrain[i].size(); ++j)
 		{
-			if (terrain[i][j] != 'X' && isCaptured(i, j))
+			if (terrain[i][j] == bkpTerrain[posAct.x][posAct.y] && isCaptured(i, j))
 			{
 				vector<vector<bool>> visited(terrain.size(), vector<bool>(terrain[0].size(), false));
-				removeStones(i, j, terrain[i][j], visited);
+				removeStones(i, j, terrain[i][j], visited, false);
 			}
 		}
 	}
 
-	vector<vector<char>> tmpTerrain(terrain);
-	tmpTerrain[dernierCoup.x][dernierCoup.y] = tour
+	ko = (terrain == terrainAvant);	// On regarde si on a un ko
+	terrain = bkpTerrain;
 
-	// Check les captures de pierres
-	for (int i = 0; i < tmpTerrain.size(); ++i)
-	{
-		for (int j = 0; j < tmpTerrain[i].size(); ++j)
-		{
-			if (tmpTerrain[i][j] != 'X' && isCaptured(i, j))
-			{
-				vector<vector<bool>> visited(tmpTerrain.size(), vector<bool>(tmpTerrain[0].size(), false));
-				removeStones(i, j, tmpTerrain[i][j], visited);
-			}
-		}
-	}
-
-	bool ko(tmpTerrain == terrainAvant);
 
 	if (ko)
 	{
-		
+		cout << "Ko : " << posKo.x << " | " << posKo.y << endl;
+		terrain[posKo.x][posKo.y] = 'K';
+		cercles[posKo.x][posKo.y].setFillColor(Color::Transparent);
+		cercles[posKo.x][posKo.y].setOutlineColor(Color(0, 0, 0));
 	}
 	else
 	{
-
+		
 	}
-	terrainAvant = terrain;
+	terrainAvant = bkpTerrain;
 }
 
 bool isCaptured(int x, int y)
@@ -57,7 +98,7 @@ bool hasLiberty(int x, int y, char color, vector<vector<bool>>& visited)
 {
 	if (x < 0 || y < 0 || x >= terrain.size() || y >= terrain[0].size())
 		return false;
-	if (terrain[x][y] == 'X')
+	if (terrain[x][y] == 'X' || terrain[x][y] == 'K')
 		return true;	// La pierre a une liberté
 	
 	if (terrain[x][y] != color)
@@ -73,19 +114,21 @@ bool hasLiberty(int x, int y, char color, vector<vector<bool>>& visited)
 			hasLiberty(x, y - 1, color, visited);
 }
 
-void removeStones(int x, int y, char color, vector<vector<bool>>& visited)
+void removeStones(int x, int y, char color, vector<vector<bool>>& visited, bool changerGraphique = true)
 {
 	if (x < 0 || y < 0 || x >= terrain.size() || y >= terrain[0].size())
 		return;
 
 	if (terrain[x][y] != color || visited[x][y])
 		return;
-	if (visited[x][y])
-		return;
 
 	visited[x][y] = true;
 	terrain[x][y] = 'X';
-	cercles[x][y].setFillColor(Color::Transparent);
+	if (changerGraphique)
+	{
+		cercles[x][y].setFillColor(Color::Transparent);
+		cercles[x][y].setOutlineColor(Color::Transparent);
+	}
 
 	
 	// Mettre à jour le score
@@ -94,10 +137,10 @@ void removeStones(int x, int y, char color, vector<vector<bool>>& visited)
 	else if (color == 'N')
 		blancasComidas++;
 
-	removeStones(x + 1, y, color, visited);
-	removeStones(x - 1, y, color, visited);
-	removeStones(x, y + 1, color, visited);
-	removeStones(x, y - 1, color, visited);
+	removeStones(x + 1, y, color, visited, changerGraphique);
+	removeStones(x - 1, y, color, visited, changerGraphique);
+	removeStones(x, y + 1, color, visited, changerGraphique);
+	removeStones(x, y - 1, color, visited, changerGraphique);
 }
 bool hasCapture(const Vector2i& pos)
 {
@@ -140,8 +183,6 @@ bool isSuicide(const Vector2i& pos)
     bool hasLib = hasLiberty(pos.x, pos.y, color, visited);
     bool captured = hasCapture(pos);
     terrain[pos.x][pos.y] = 'X';
-
-    cout << "lib : " << hasLib << "\nmange : " << captured << endl;
 
     return !hasLib && !captured;
 }
