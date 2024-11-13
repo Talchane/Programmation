@@ -193,20 +193,12 @@ int main()
 				if (event.key.code == Keyboard::Space)
 				{
 					map<char, int> scores;
-					scores['B'] = 10;
-					scores['N'] = 15;
+					scores['N'] = goban.blancasComidas;
+					scores['B'] = goban.negrasComidas;
 
-					auto res = getNewState(goban.terrain, scores, pos, 'B');
-					for (int i = 0; i < size(res.first); ++i)
-					{
-						for (int j = 0; j < size(res.first); ++j)
-						{
-							cout << res.first[i][j] << " ";
-						}
-						cout << endl;
-					}
-					cout << endl << "N = " << res.second['N'] << endl;
-					cout << "B = " << res.second['B'] << endl;
+					Vector2i coupIA = CalculCoupIA(goban.terrain, scores, goban.tour);
+
+					goban.jouer(coupIA);
 				}
 			}
 		}
